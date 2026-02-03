@@ -9,7 +9,7 @@ This repository serves as a centralized source for AI agent configurations, pers
   - **Gemini CLI** (`.gemini/`)
   - **Claude Code** (`.claude/`)
   - **OpenAI Codex** (`.codex/`)
-- **Easy Deployment:** A helper script (`copy-config.sh`) to quickly inject specific skills into your current project's repository.
+- **Flexible Deployment:** A helper script (`copy-config.sh`) to inject specific skills, settings, or entire configurations into your current project's repository.
 
 ## Getting Started
 
@@ -39,7 +39,7 @@ source ~/Code/ai-cli-config/alias.zsh
 
 ## Usage
 
-Once the alias `copy-ai-cfg` is set up, you can use it from within any project directory to pull in skills.
+Once the alias `copy-ai-cfg` is set up, you can use it from within any project directory to pull in skills and configurations.
 
 ### List Available Skills
 
@@ -53,34 +53,44 @@ copy-ai-cfg --list
 copy-ai-cfg --list gemini
 ```
 
-### Copy a Skill
+### Copy Skills and Configuration
 
-To copy a specific skill into your current project (or another target directory):
+The `copy-ai-cfg` command allows you to mix and match what you want to copy.
 
+**Syntax:**
 ```bash
-# Syntax: copy-ai-cfg <cli> <skill-name> <destination-path>
+copy-ai-cfg <cli> [options] [skills...] <destination-path>
+```
 
-# Example: Add the 'senior-engineer' skill for Gemini to the current directory
+**Options:**
+- `-s`, `--settings`: Copy the global settings file (e.g., `settings.json`) if available.
+- `-a`, `--all`: Copy **all** available skills for the selected CLI.
+- `--force`: Overwrite existing files in the destination.
+
+### Examples
+
+**1. Copy specific skills:**
+Add the 'senior-engineer' skill for Gemini to the current directory (`.`):
+```bash
 copy-ai-cfg gemini senior-engineer .
-
-# Example: Add 'refactor' skill for Claude to a specific project
-copy-ai-cfg claude refactor ~/Code/my-new-project
 ```
 
-### Copy All Skills
-
-To import all available skills for a specific agent:
-
+**2. Copy just the settings:**
+Update your project's configuration without adding skills:
 ```bash
-copy-ai-cfg gemini --all .
+copy-ai-cfg gemini -s .
 ```
 
-### Overwriting
-
-If a skill already exists in the destination, use the `--force` flag to overwrite it:
-
+**3. Mix and Match:**
+Copy settings, the 'senior-engineer' skill, and the 'code-reviewer' skill:
 ```bash
-copy-ai-cfg --force gemini senior-engineer .
+copy-ai-cfg gemini -s senior-engineer code-reviewer .
+```
+
+**4. Copy Everything:**
+Copy all skills and the settings file:
+```bash
+copy-ai-cfg gemini -a -s .
 ```
 
 ## Repository Structure
@@ -92,7 +102,8 @@ ai-cli-config/
 ├── .codex/            # OpenAI Codex specific configurations
 │   └── skills/        # Directories containing skill definitions
 ├── .gemini/           # Gemini CLI specific configurations
-│   └── skills/        # Directories containing skill definitions (SKILL.md + resources)
+│   ├── skills/        # Directories containing skill definitions (SKILL.md + resources)
+│   └── settings.json  # Global settings for Gemini CLI
 ├── scripts/
 │   └── copy-config.sh # Core logic for the deployment tool
 ├── alias.bash         # Alias definition for Bash

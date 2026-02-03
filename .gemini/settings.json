@@ -1,0 +1,28 @@
+{
+  "autoAccept": true,
+  "shell": {
+    "allowRedirection": true,
+    "allowPiping": true,
+    "allowHeredoc": true
+  },
+  "tools": {
+    "core": [
+      "WriteFile",
+      "EditFile",
+      "read_file",
+      "list_directory",
+      "find",
+      "run_shell_command(find)",      
+      "run_shell_command(ln)",
+      "run_shell_command(cat)",
+      "run_shell_command(printf)",
+      "run_shell_command(git)",
+      "run_shell_command(pytest)",
+      "run_shell_command(./.venv/bin/pytest)"
+    ],
+    "exclude": [
+      "run_shell_command(git push)",
+      "run_shell_command(rm -rf *)"
+    ]
+  }
+}

@@ -5,13 +5,13 @@ set -euo pipefail
 #
 # Supports:
 #   - List skills:            --list [cli]
-#   - Copy one skill:         [--force] <cli> <skill> <dest_repo_path>
-#   - Copy all skills:        [--force] <cli> --all <dest_repo_path>
+#   - Copy config:            [--force] <cli> [options] [skills...] <dest_repo_path>
 #
 # Repo layout assumed:
 #   - claude:  .claude/skills/<name>.md
 #   - codex:   .codex/skills/<skill-dir>/...
 #   - gemini:  .gemini/skills/<skill-dir>/...
+#              .gemini/settings.json (optional)
 #
 # Auto-map for claude skill names:
 #   - Accepts senior-engineer / senior_engineer / senior engineer (spaces -> dashes)
@@ -24,8 +24,7 @@ usage() {
   cat <<'USAGE'
 Usage:
   copy-config.sh -l|--list [cli]
-  copy-config.sh [--force] <cli> <skill> <dest_repo_path>
-  copy-config.sh [--force] <cli> --all <dest_repo_path>
+  copy-config.sh [--force] <cli> [options] [skills...] <dest_repo_path>
 
 CLIs:
   claude | gemini | codex
@@ -34,18 +33,22 @@ List:
   -l, --list          List skills.
                        If [cli] is provided, list only that CLI's skills.
 
-Copy:
+Copy Options:
+  -s, --settings      Copy settings.json (if available).
+  -a, --all, --all-skills
+                      Copy all skills.
+  --force             Overwrite destination if it already exists.
+
+Arguments:
   <cli>               Which CLI to copy for.
-  <skill>             Skill name:
-                        - claude: accepts senior-engineer / senior_engineer; maps to .md file
-                        - gemini: skill directory name
-                        - codex:  skill directory name
-  --all               Copy all skills for the CLI.
+  [skills...]         Specific skill names to copy.
   <dest_repo_path>    Target repo root.
 
-Options:
-  --force             Overwrite destination if it already exists.
-  -h, --help          Show help.
+Examples:
+  copy-config.sh gemini -s /tmp/my-repo
+  copy-config.sh gemini senior-engineer /tmp/my-repo
+  copy-config.sh gemini -a -s /tmp/my-repo
+  copy-config.sh gemini senior-engineer -s /tmp/my-repo
 USAGE
 }
 
@@ -56,7 +59,8 @@ die() {
 
 to_abs_dir() {
   local p="$1"
-  if command -v realpath >/dev/null 2>&1; then
+  if command -v realpath >/dev/null 2>&1;
+    then
     realpath "$p"
   else
     (cd "$p" && pwd)
@@ -97,7 +101,7 @@ claude_candidates() {
   s="$(slugify "$raw")"
 
   local dash="$s"
-  local under="${s//-/_}"
+  local under="${s//-/}"
 
   if [[ "$dash" == "$under" ]]; then
     printf '%s\n' "$dash"
@@ -176,6 +180,22 @@ copy_path() {
   cp -R "$src" "$dst"
 }
 
+copy_settings() {
+  local cli="$1"
+  local dest_repo="$2"
+  local force="$3"
+
+  local src="$ROOT_DIR/.${cli}/settings.json"
+  local dst="$dest_repo/.${cli}/settings.json"
+
+  if [[ -f "$src" ]]; then
+    copy_path "$src" "$dst" "$force"
+    echo "Copied ${cli} settings -> ${dst}"
+  else
+    echo "Warning: No settings.json found for ${cli} at $src"
+  fi
+}
+
 copy_claude_one() {
   local user_skill="$1"
   local dest_repo="$2"
@@ -215,7 +235,7 @@ copy_dir_one() {
   echo "Copied ${cli} skill '${skill}' -> ${dst}"
 }
 
-copy_all_for_cli() {
+copy_all_skills_for_cli() {
   local cli="$1"
   local dest_repo="$2"
   local force="$3"
@@ -259,7 +279,7 @@ force=0
 mode="copy"
 list_cli=""
 
-# Parse options up front
+# Parse global options up front
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -l|--list)
@@ -279,7 +299,7 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     -*)
-      die "Unknown option: $1"
+      die "Unknown global option or invalid placement: $1"
       ;;
     *)
       break
@@ -297,39 +317,61 @@ if [[ "$mode" == "list" ]]; then
   exit 0
 fi
 
-# Copy mode:
-#   [--force] <cli> <skill> <dest>
-#   [--force] <cli> --all <dest>
-[[ $# -ge 3 ]] || { usage; exit 1; }
+# Copy mode
+[[ $# -ge 2 ]] || { usage; exit 1; }
 
 cli="$1"
 is_valid_cli "$cli" || die "Unknown cli: $cli (expected: claude|gemini|codex)"
 shift
 
-if [[ "${1:-}" == "--all" ]]; then
+do_settings=0
+do_all_skills=0
+declare -a specific_skills=()
+
+# Parse copy arguments
+# We iterate until $# == 1 (which is dest)
+while [[ $# -gt 1 ]]; do
+  case "$1" in
+    -s|--settings)
+      do_settings=1
+      ;;
+    -a|--all|--all-skills)
+      do_all_skills=1
+      ;;
+    -*)
+      die "Unknown option: $1"
+      ;;
+    *)
+      specific_skills+=("$1")
+      ;;
+  esac
   shift
-  [[ $# -eq 1 ]] || { usage; exit 1; }
-  dest="$(to_abs_dir "$1")"
-  [[ -d "$dest" ]] || die "Destination is not a directory: $dest"
-  copy_all_for_cli "$cli" "$dest" "$force"
-  exit 0
-fi
+done
 
-[[ $# -eq 2 ]] || { usage; exit 1; }
-skill="$1"
-dest="$2"
-
-dest="$(to_abs_dir "$dest")"
+dest="$(to_abs_dir "$1")"
 [[ -d "$dest" ]] || die "Destination is not a directory: $dest"
 
-case "$cli" in
-  claude)
-    copy_claude_one "$skill" "$dest" "$force"
-    ;;
-  gemini|codex)
-    copy_dir_one "$cli" "$skill" "$dest" "$force"
-    ;;
-  *)
-    die "Invalid cli: $cli"
-    ;;
-esac
+if [[ "$do_settings" -eq 0 && "$do_all_skills" -eq 0 && "${#specific_skills[@]}" -eq 0 ]]; then
+  die "Nothing to copy specified. Provide a skill name, -a (all skills), or -s (settings)."
+fi
+
+# 1. Settings
+if [[ "$do_settings" -eq 1 ]]; then
+  copy_settings "$cli" "$dest" "$force"
+fi
+
+# 2. Skills
+if [[ "$do_all_skills" -eq 1 ]]; then
+  copy_all_skills_for_cli "$cli" "$dest" "$force"
+else
+  for skill in "${specific_skills[@]}"; do
+    case "$cli" in
+      claude)
+        copy_claude_one "$skill" "$dest" "$force"
+        ;;
+      gemini|codex)
+        copy_dir_one "$cli" "$skill" "$dest" "$force"
+        ;;
+    esac
+  done
+fi
