@@ -6,6 +6,8 @@ set -euo pipefail
 # Supports:
 #   - List skills:            --list [cli]
 #   - Copy config:            [--force] <cli> [options] [skills...] <dest_repo_path>
+#   - Sync task management:   [--force] --task-management-only <dest_repo_path>
+#                             [--force] --task-management-upgrade <dest_repo_path>
 #
 # Repo layout assumed:
 #   - claude:  .claude/skills/<name>.md
@@ -24,6 +26,8 @@ usage() {
   cat <<'USAGE'
 Usage:
   copy-config.sh -l|--list [cli]
+  copy-config.sh [--force] --task-management-only <dest_repo_path>
+  copy-config.sh [--force] --task-management-upgrade <dest_repo_path>
   copy-config.sh [--force] <cli> [options] [skills...] <dest_repo_path>
 
 CLIs:
@@ -37,6 +41,10 @@ Copy Options:
   -s, --settings      Copy settings.json (if available).
   -a, --all, --all-skills
                       Copy all skills.
+  --task-management-only
+                      Copy TASK_MANAGEMENT.md and .task-management into destination.
+  --task-management-upgrade
+                      Upgrade task-management templates/docs while preserving state.
   --force             Overwrite destination if it already exists.
 
 Arguments:
@@ -49,6 +57,8 @@ Examples:
   copy-config.sh gemini senior-engineer /tmp/my-repo
   copy-config.sh gemini -a -s /tmp/my-repo
   copy-config.sh gemini senior-engineer -s /tmp/my-repo
+  copy-config.sh --task-management-only /tmp/my-repo
+  copy-config.sh --task-management-upgrade /tmp/my-repo
 USAGE
 }
 
@@ -278,6 +288,7 @@ copy_all_skills_for_cli() {
 force=0
 mode="copy"
 list_cli=""
+task_management_mode=""
 
 # Parse global options up front
 while [[ $# -gt 0 ]]; do
@@ -294,6 +305,14 @@ while [[ $# -gt 0 ]]; do
       force=1
       shift
       ;;
+    --task-management-only)
+      task_management_mode="copy"
+      shift
+      ;;
+    --task-management-upgrade)
+      task_management_mode="upgrade"
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -308,12 +327,30 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ "$mode" == "list" ]]; then
+  if [[ -n "$task_management_mode" ]]; then
+    die "--list cannot be combined with task-management sync options"
+  fi
   if [[ -z "$list_cli" ]]; then
     list_all
     exit 0
   fi
   is_valid_cli "$list_cli" || die "Unknown cli: $list_cli (expected: claude|gemini|codex)"
   list_one "$list_cli"
+  exit 0
+fi
+
+# Task-management mode
+if [[ -n "$task_management_mode" ]]; then
+  [[ $# -eq 1 ]] || { usage; exit 1; }
+  dest="$(to_abs_dir "$1")"
+  [[ -d "$dest" ]] || die "Destination is not a directory: $dest"
+
+  cmd=("$SCRIPT_DIR/sync-task-management.sh" "--mode" "$task_management_mode" "--source-root" "$ROOT_DIR")
+  if [[ "$force" -eq 1 ]]; then
+    cmd+=("--force")
+  fi
+  cmd+=("$dest")
+  "${cmd[@]}"
   exit 0
 fi
 

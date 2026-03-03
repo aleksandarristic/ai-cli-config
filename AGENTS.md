@@ -52,3 +52,15 @@ Codex skills are highly specialized, often focusing on specific languages (Go, P
 ### General Engineering
 - **senior-software-engineer-high**: High-level senior engineering guidance.
 - **senior-software-engineer-low**: Low-level implementation details and coding standards.
+
+## 4. Task Management Rules
+
+- Follow the shared standard in `TASK_MANAGEMENT.md` when task-management files are present.
+- Task-management state lives under `.task-management/`.
+- Bug tracking uses dedicated IDs and files:
+  - `BUGS.md`, `BUGS_DONE.md`, `bug_counter.md`
+  - ID format: `BUG-0001`, `BUG-0002`, ...
+- When documenting a bug, create/update a bug entry and create corresponding fix task(s) in `TODO.md` or `BACKLOG.md`.
+- Ensure `.task-management/.webhook.json` is gitignored in target repos.
+- Notifications are agent-driven via `.task-management/notify.py` when configured/enabled.
+- Prefer contextual tests by default (run only necessary tests for the change), unless broader/full testing is requested.

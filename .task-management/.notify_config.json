@@ -1,0 +1,23 @@
+{
+  "title": "Codex Task Update",
+  "default_level": "info",
+  "allowed_levels": ["start", "done", "blocked", "final", "info"],
+  "default_task_name": "General",
+  "status_label": "Status",
+  "task_label": "Task",
+  "track_label": "Track",
+  "message_label": "Message",
+  "time_label": "Time",
+  "time_label_overflow": "Time (Local)",
+  "timestamp_format": "%Y-%m-%d %H:%M:%S",
+  "include_timezone_name": true,
+  "include_utc_offset": true,
+  "include_timestamp": true,
+  "max_content_length": 2000,
+  "request_timeout_seconds": 10,
+  "user_agent": "codex-task-notify/1.0",
+  "webhook_env_var": "DISCORD_WEBHOOK_URL",
+  "webhook_keys": ["webhook_url", "webhook", "url"],
+  "username": "",
+  "avatar_url": ""
+}
