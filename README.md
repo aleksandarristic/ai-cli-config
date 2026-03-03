@@ -113,6 +113,48 @@ Standalone script variant:
 ./scripts/sync-task-management.sh --mode upgrade /path/to/target-repo
 ```
 
+## Task Management In Another Project
+
+Use this flow when you want to add or update only task management in a target repo.
+
+1. Add task management:
+
+```bash
+copy-ai-cfg --task-management-only /path/to/target-repo
+```
+
+2. Set a real webhook URL in the target repo:
+
+```json
+{
+  "webhook_url": "https://discord.com/api/webhooks/..."
+}
+```
+
+Path: `/path/to/target-repo/.task-management/.webhook.json`
+
+3. Upgrade later without losing active task/bug state:
+
+```bash
+copy-ai-cfg --task-management-upgrade /path/to/target-repo
+```
+
+## How Agents Use It
+
+Task management is intended for Codex agent execution. Typical prompts:
+
+- `add a new task for implementing search caching`
+- `document a bug: API returns 500 when page is empty`
+- `do tasks 0007, 0008, and 0009 in sequence`
+- `do tasks 0010, 0011, and 0012 in parallel`
+- `do tasks 0010, 0011, and 0012 in parallel using worktrees`
+
+Expected behavior:
+
+- tasks and bugs keep stable IDs (`0001`, `BUG-0001`)
+- bug reports generate follow-up fix tasks in `TODO.md` or `BACKLOG.md`
+- notifications are sent by agent via `.task-management/notify.py` when enabled/configured
+
 ## Repository Structure
 
 ```text
@@ -125,7 +167,7 @@ ai-cli-config/
 │   ├── skills/        # Directories containing skill definitions (SKILL.md + resources)
 │   └── settings.json  # Global settings for Gemini CLI
 ├── scripts/
-│   ├── copy-config.sh         # Core logic for skills/settings + task-management sync entry points
+│   ├── copy-config.sh          # Core logic for skills/settings + task-management sync entry points
 │   └── sync-task-management.sh # Standalone task-management sync (copy/upgrade)
 ├── TASK_MANAGEMENT.md # Reusable task-management standard
 ├── .task-management/  # Task/bug templates and notifier helpers
@@ -138,6 +180,6 @@ ai-cli-config/
 
 1.  **Create a Branch:** `git checkout -b add-new-skill`
 2.  **Add Your Skill:**
-    *   For **Gemini/Codex**: Create a new directory under `.gemini/skills/` or `.codex/skills/` with a `SKILL.md` file.
-    *   For **Claude**: Add a new `.md` file under `.claude/skills/`.
+    - For **Gemini/Codex**: Create a new directory under `.gemini/skills/` or `.codex/skills/` with a `SKILL.md` file.
+    - For **Claude**: Add a new `.md` file under `.claude/skills/`.
 3.  **Commit & Push:** Submit a PR to merge your new skill into the main collection.
