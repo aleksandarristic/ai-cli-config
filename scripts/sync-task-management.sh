@@ -53,7 +53,7 @@ ensure_webhook_gitignore() {
 ensure_agents_task_management_reference() {
   local destination="$1"
   local agents_file="$destination/AGENTS.md"
-  local marker="TASK_MANAGEMENT.md"
+  local marker_line="- Follow the shared task-tracking standard in \`TASK_MANAGEMENT.md\`."
 
   if [[ ! -e "$agents_file" ]]; then
     cat > "$agents_file" <<'EOF'
@@ -68,7 +68,7 @@ EOF
     return 0
   fi
 
-  if grep -qF "$marker" "$agents_file"; then
+  if grep -qF -- "$marker_line" "$agents_file"; then
     return 0
   fi
 
@@ -124,21 +124,15 @@ merge_template_with_existing_entries() {
   local template="$1"
   local existing="$2"
   local merged="$3"
-  local entry_pattern="$4"
+  local start_line="$4"
   local tmp_old
   local tmp_tail
-  local start_line
 
   tmp_old="$(mktemp)"
   tmp_tail="$(mktemp)"
   cp "$existing" "$tmp_old"
 
-  start_line="$(grep -nE "$entry_pattern" "$tmp_old" | head -n1 | cut -d: -f1 || true)"
-  if [[ -n "$start_line" ]]; then
-    tail -n +"$start_line" "$tmp_old" > "$tmp_tail"
-  else
-    cp "$tmp_old" "$tmp_tail"
-  fi
+  tail -n +"$start_line" "$tmp_old" > "$tmp_tail"
 
   cp "$template" "$merged"
   if [[ -s "$tmp_tail" ]]; then
@@ -193,22 +187,40 @@ upgrade_task_management() {
   merged="$(mktemp)"
 
   if [[ -f "$dst_todo" ]]; then
-    merge_template_with_existing_entries "$src_tm_dir/TODO.md" "$dst_todo" "$merged" "$task_entry_pattern"
-    cp "$merged" "$dst_todo"
+    local todo_start_line
+    todo_start_line="$(grep -nE "$task_entry_pattern" "$dst_todo" | head -n1 | cut -d: -f1 || true)"
+    if [[ -n "$todo_start_line" ]]; then
+      merge_template_with_existing_entries "$src_tm_dir/TODO.md" "$dst_todo" "$merged" "$todo_start_line"
+      cp "$merged" "$dst_todo"
+    else
+      echo "Warning: no parseable task entries found in $dst_todo; leaving existing file unchanged." >&2
+    fi
   else
     overwrite_file "$src_tm_dir/TODO.md" "$dst_todo"
   fi
 
   if [[ -f "$dst_backlog" ]]; then
-    merge_template_with_existing_entries "$src_tm_dir/BACKLOG.md" "$dst_backlog" "$merged" "$task_entry_pattern"
-    cp "$merged" "$dst_backlog"
+    local backlog_start_line
+    backlog_start_line="$(grep -nE "$task_entry_pattern" "$dst_backlog" | head -n1 | cut -d: -f1 || true)"
+    if [[ -n "$backlog_start_line" ]]; then
+      merge_template_with_existing_entries "$src_tm_dir/BACKLOG.md" "$dst_backlog" "$merged" "$backlog_start_line"
+      cp "$merged" "$dst_backlog"
+    else
+      echo "Warning: no parseable task entries found in $dst_backlog; leaving existing file unchanged." >&2
+    fi
   else
     overwrite_file "$src_tm_dir/BACKLOG.md" "$dst_backlog"
   fi
 
   if [[ -f "$dst_bugs" ]]; then
-    merge_template_with_existing_entries "$src_tm_dir/BUGS.md" "$dst_bugs" "$merged" "$bug_entry_pattern"
-    cp "$merged" "$dst_bugs"
+    local bugs_start_line
+    bugs_start_line="$(grep -nE "$bug_entry_pattern" "$dst_bugs" | head -n1 | cut -d: -f1 || true)"
+    if [[ -n "$bugs_start_line" ]]; then
+      merge_template_with_existing_entries "$src_tm_dir/BUGS.md" "$dst_bugs" "$merged" "$bugs_start_line"
+      cp "$merged" "$dst_bugs"
+    else
+      echo "Warning: no parseable bug entries found in $dst_bugs; leaving existing file unchanged." >&2
+    fi
   else
     overwrite_file "$src_tm_dir/BUGS.md" "$dst_bugs"
   fi

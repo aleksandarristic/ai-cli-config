@@ -306,10 +306,16 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --task-management-only)
+      if [[ -n "$task_management_mode" ]]; then
+        die "--task-management-only and --task-management-upgrade are mutually exclusive"
+      fi
       task_management_mode="copy"
       shift
       ;;
     --task-management-upgrade)
+      if [[ -n "$task_management_mode" ]]; then
+        die "--task-management-only and --task-management-upgrade are mutually exclusive"
+      fi
       task_management_mode="upgrade"
       shift
       ;;
