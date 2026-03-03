@@ -88,7 +88,8 @@ copy_item() {
   local force="$3"
 
   if [[ ! -e "$src" ]]; then
-    return 0
+    echo "Missing source path: $src" >&2
+    return 1
   fi
 
   if [[ -e "$dst" ]]; then
@@ -100,6 +101,42 @@ copy_item() {
   fi
 
   cp -R "$src" "$dst"
+}
+
+validate_source_assets() {
+  local source_root="$1"
+  local -a required_paths=(
+    "$source_root/TASK_MANAGEMENT.md"
+    "$source_root/.task-management/TODO.md"
+    "$source_root/.task-management/BACKLOG.md"
+    "$source_root/.task-management/BUGS.md"
+    "$source_root/.task-management/TASK_TEMPLATE.md"
+    "$source_root/.task-management/BUG_TEMPLATE.md"
+    "$source_root/.task-management/notify.py"
+    "$source_root/.task-management/.notify_config.json"
+    "$source_root/.task-management/DONE.md"
+    "$source_root/.task-management/BUGS_DONE.md"
+    "$source_root/.task-management/REMOVED.md"
+    "$source_root/.task-management/progress_log.md"
+    "$source_root/.task-management/task_counter.md"
+    "$source_root/.task-management/bug_counter.md"
+    "$source_root/.task-management/.notify_state.json"
+    "$source_root/.task-management/.webhook.json"
+  )
+
+  local missing=0
+  local path
+  for path in "${required_paths[@]}"; do
+    if [[ ! -e "$path" ]]; then
+      echo "Missing source asset: $path" >&2
+      missing=1
+    fi
+  done
+
+  if [[ "$missing" -ne 0 ]]; then
+    echo "Aborting: source task-management assets are incomplete under $source_root" >&2
+    return 1
+  fi
 }
 
 overwrite_file() {
@@ -141,6 +178,25 @@ merge_template_with_existing_entries() {
   fi
 
   rm -f "$tmp_old" "$tmp_tail"
+}
+
+find_first_entry_line_after_anchor() {
+  local file="$1"
+  local entry_pattern="$2"
+  local anchor_pattern="$3"
+  local anchor_line
+  local search_start=1
+  local relative_line
+
+  anchor_line="$(grep -nE "$anchor_pattern" "$file" | tail -n1 | cut -d: -f1 || true)"
+  if [[ -n "$anchor_line" ]]; then
+    search_start=$((anchor_line + 1))
+  fi
+
+  relative_line="$(tail -n +"$search_start" "$file" | grep -nE "$entry_pattern" | head -n1 | cut -d: -f1 || true)"
+  if [[ -n "$relative_line" ]]; then
+    echo $((search_start + relative_line - 1))
+  fi
 }
 
 copy_task_management() {
@@ -188,7 +244,7 @@ upgrade_task_management() {
 
   if [[ -f "$dst_todo" ]]; then
     local todo_start_line
-    todo_start_line="$(grep -nE "$task_entry_pattern" "$dst_todo" | head -n1 | cut -d: -f1 || true)"
+    todo_start_line="$(find_first_entry_line_after_anchor "$dst_todo" "$task_entry_pattern" '^Copy `\.task-management/TASK_TEMPLATE\.md` when creating new tasks\.$' || true)"
     if [[ -n "$todo_start_line" ]]; then
       merge_template_with_existing_entries "$src_tm_dir/TODO.md" "$dst_todo" "$merged" "$todo_start_line"
       cp "$merged" "$dst_todo"
@@ -214,7 +270,7 @@ upgrade_task_management() {
 
   if [[ -f "$dst_bugs" ]]; then
     local bugs_start_line
-    bugs_start_line="$(grep -nE "$bug_entry_pattern" "$dst_bugs" | head -n1 | cut -d: -f1 || true)"
+    bugs_start_line="$(find_first_entry_line_after_anchor "$dst_bugs" "$bug_entry_pattern" '^Copy `\.task-management/BUG_TEMPLATE\.md` when creating new bugs\.$' || true)"
     if [[ -n "$bugs_start_line" ]]; then
       merge_template_with_existing_entries "$src_tm_dir/BUGS.md" "$dst_bugs" "$merged" "$bugs_start_line"
       cp "$merged" "$dst_bugs"
@@ -293,6 +349,8 @@ if [[ ! -d "$dest" ]]; then
   echo "Destination is not a directory: $dest" >&2
   exit 1
 fi
+
+validate_source_assets "$source_root"
 
 if [[ "$mode" == "copy" ]]; then
   copy_task_management "$source_root" "$dest" "$force"
