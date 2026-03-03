@@ -10,6 +10,7 @@ This repository serves as a centralized source for AI agent configurations, pers
   - **Claude Code** (`.claude/`)
   - **OpenAI Codex** (`.codex/`)
 - **Flexible Deployment:** A helper script (`copy-config.sh`) to inject specific skills, settings, or entire configurations into your current project's repository.
+- **Reusable Task Management:** Optional task/bug tracking standard and templates (`TASK_MANAGEMENT.md`, `.task-management/`) with upgrade support.
 
 ## Getting Started
 
@@ -93,6 +94,25 @@ Copy all skills and the settings file:
 copy-ai-cfg gemini -a -s .
 ```
 
+### Task Management Sync
+
+You can also copy or upgrade task-management assets into a target repository:
+
+```bash
+# Add task-management files
+copy-ai-cfg --task-management-only /path/to/target-repo
+
+# Upgrade task-management templates/docs while preserving task state
+copy-ai-cfg --task-management-upgrade /path/to/target-repo
+```
+
+Standalone script variant:
+
+```bash
+./scripts/sync-task-management.sh --mode copy /path/to/target-repo
+./scripts/sync-task-management.sh --mode upgrade /path/to/target-repo
+```
+
 ## Repository Structure
 
 ```text
@@ -105,7 +125,10 @@ ai-cli-config/
 │   ├── skills/        # Directories containing skill definitions (SKILL.md + resources)
 │   └── settings.json  # Global settings for Gemini CLI
 ├── scripts/
-│   └── copy-config.sh # Core logic for the deployment tool
+│   ├── copy-config.sh         # Core logic for skills/settings + task-management sync entry points
+│   └── sync-task-management.sh # Standalone task-management sync (copy/upgrade)
+├── TASK_MANAGEMENT.md # Reusable task-management standard
+├── .task-management/  # Task/bug templates and notifier helpers
 ├── alias.bash         # Alias definition for Bash
 ├── alias.zsh          # Alias definition for Zsh
 └── README.md          # This file
