@@ -1,16 +1,12 @@
 # BUGS
 
-Open bugs only. Use stable bug IDs and never renumber.
+Open bugs only.
 
-Default entry format:
+Format:
 
-`BUG-0001 - Bug Title`
+- `## BUG-0001 - Title`
+- `- observed: ...`
+- `- expected: ...`
 
-- observed behavior:
-- expected behavior:
-- reproduction hints: (optional)
-- likely cause assumptions:
-- likely fix area assumptions:
-- linked fix tasks: (TODO/BACKLOG IDs)
-
-Copy `.task-management/BUG_TEMPLATE.md` when creating new bugs.
+<!-- entries:start -->
+<!-- entries:end -->

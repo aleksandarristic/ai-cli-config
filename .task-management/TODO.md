@@ -1,17 +1,12 @@
 # TODO
 
-Active tasks only. Use stable IDs and never renumber.
+Active tasks only.
 
-Default entry format:
+Format:
 
-`0001 - Task Title`
+- `## 0001 - Title`
+- `- objective: ...`
+- `- acceptance: ...`
 
-- objective:
-- scope:
-- subtasks:
-- acceptance criteria:
-- dependencies: (optional)
-- risks/unknowns: (optional)
-- linked bugs: (optional, e.g. BUG-0003)
-
-Copy `.task-management/TASK_TEMPLATE.md` when creating new tasks.
+<!-- entries:start -->
+<!-- entries:end -->

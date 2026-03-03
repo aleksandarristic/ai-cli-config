@@ -1,3 +1,8 @@
 # DONE
 
-Move completed tasks here from `TODO.md` without changing IDs.
+Completed or removed tasks.
+
+Use `- status: done` or `- status: removed`.
+
+<!-- entries:start -->
+<!-- entries:end -->

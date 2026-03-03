@@ -1,9 +1,6 @@
-# BUG-0001 - Bug Title
-
-- observed behavior:
-- expected behavior:
-- reproduction hints:
-- likely cause assumptions:
-- likely fix area assumptions:
-- linked fix tasks:
-- notes:
+## BUG-0001 - Bug Title
+- status: open
+- observed: What is happening.
+- expected: What should happen.
+- reproduction:
+- links: 0001

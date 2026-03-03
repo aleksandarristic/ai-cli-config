@@ -1,3 +1,6 @@
 # BACKLOG
 
-Store near-future or unscheduled ideas here.
+Unscheduled or lower-priority tasks.
+
+<!-- entries:start -->
+<!-- entries:end -->
