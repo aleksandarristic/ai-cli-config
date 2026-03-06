@@ -113,6 +113,34 @@ Standalone script variant:
 ./scripts/sync-task-management.sh --mode upgrade /path/to/target-repo
 ```
 
+### Task Tool Quick Start
+
+After task management exists in a repo, use the helper instead of manual edits:
+
+```bash
+# Get next IDs
+python3 .task-management/task_tool.py next-task-id
+python3 .task-management/task_tool.py next-bug-id
+
+# Create work items
+python3 .task-management/task_tool.py add-task --title "Implement X"
+python3 .task-management/task_tool.py add-bug --title "Bug in X"
+
+# Close work items
+python3 .task-management/task_tool.py done-task --id 0001 --note "Shipped"
+python3 .task-management/task_tool.py remove-task --id 0002 --reason "No longer needed"
+python3 .task-management/task_tool.py close-bug --id BUG-0001 --resolution "Fixed in parser"
+
+# Milestone log
+python3 .task-management/task_tool.py log --message "Completed feature X"
+```
+
+Run the lightweight regression check for task-tool behavior:
+
+```bash
+./scripts/test-task-tool.sh
+```
+
 ## Task Management In Another Project
 
 Use this flow when you want to add or update only task management in a target repo.
