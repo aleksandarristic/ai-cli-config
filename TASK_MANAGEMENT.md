@@ -104,3 +104,14 @@ Use `.task-management/task_tool.py` for common operations:
 - `python3 .task-management/task_tool.py remove-task --id 0043 --reason "No longer needed"`
 - `python3 .task-management/task_tool.py add-bug --title "Short bug title"`
 - `python3 .task-management/task_tool.py close-bug --id BUG-0012 --resolution "Fixed race in parser"`
+
+## Locking and Foreign Edits Policy
+
+- All task-state mutations must go through `python3 .task-management/task_tool.py`.
+- Do not manually edit `TODO.md`, `BACKLOG.md`, `DONE.md`, `BUGS.md`, or `BUGS_DONE.md` for normal lifecycle actions.
+- Treat `next-task-id` and `next-bug-id` as advisory only; IDs are finalized only by mutating commands.
+- If a foreign edit appears while you work, do not revert it.
+- Re-read current state, then continue using `task_tool.py` so writes apply on latest locked state.
+- If target task/bug is already moved or missing, treat it as already handled, add a short log note, and stop that mutation.
+- If status/ownership is unclear after re-read, ask one clarification question before further mutation.
+- Never renumber IDs or perform destructive cleanup of entries created by other agents.

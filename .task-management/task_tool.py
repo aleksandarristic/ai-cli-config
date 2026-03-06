@@ -7,7 +7,13 @@ This tool avoids manual ID bookkeeping and repetitive move operations.
 from __future__ import annotations
 
 import argparse
+import fcntl
+import os
+import random
 import re
+import tempfile
+import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -22,6 +28,7 @@ BUGS_DONE_FILE = TM_DIR / "BUGS_DONE.md"
 PROGRESS_FILE = TM_DIR / "progress_log.md"
 TASK_COUNTER_FILE = TM_DIR / "task_counter.md"
 BUG_COUNTER_FILE = TM_DIR / "bug_counter.md"
+LOCK_FILE = TM_DIR / ".tm.lock"
 
 START_MARKER = "<!-- entries:start -->"
 END_MARKER = "<!-- entries:end -->"
@@ -64,7 +71,16 @@ def _read(path: Path) -> str:
 
 
 def _write(path: Path, text: str) -> None:
-    path.write_text(_normalize(text), encoding="utf-8")
+    data = _normalize(text)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(
+        mode="w", encoding="utf-8", delete=False, dir=path.parent, prefix=f".{path.name}.", suffix=".tmp"
+    ) as tmp:
+        tmp.write(data)
+        tmp.flush()
+        os.fsync(tmp.fileno())
+        tmp_path = Path(tmp.name)
+    os.replace(tmp_path, path)
 
 
 def _split_sections(text: str) -> tuple[str, str, str]:
@@ -237,6 +253,31 @@ def _find_and_remove(task_id: str, paths: list[Path], header_re: re.Pattern[str]
     raise TaskToolError(f"Entry not found: {task_id}")
 
 
+@contextmanager
+def _acquire_lock(retries: int, delay_ms: int, jitter_ms: int):
+    LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with LOCK_FILE.open("a+", encoding="utf-8") as lock_handle:
+        for attempt in range(retries + 1):
+            try:
+                fcntl.flock(lock_handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if attempt == retries:
+                    raise TaskToolError(
+                        f"Could not acquire lock at {LOCK_FILE} after {retries + 1} attempts"
+                    ) from None
+                sleep_ms = delay_ms + random.randint(0, max(0, jitter_ms))
+                time.sleep(sleep_ms / 1000.0)
+        try:
+            yield
+        finally:
+            fcntl.flock(lock_handle.fileno(), fcntl.LOCK_UN)
+
+
+def _is_mutation(command: str) -> bool:
+    return command in {"add-task", "done-task", "remove-task", "add-bug", "close-bug", "log"}
+
+
 def cmd_next_task_id(_: argparse.Namespace) -> None:
     print(next_task_id())
 
@@ -305,6 +346,24 @@ def cmd_log(args: argparse.Namespace) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Task management helper")
+    parser.add_argument(
+        "--lock-retries",
+        type=int,
+        default=40,
+        help="How many times to retry lock acquisition for mutating commands (default: 40)",
+    )
+    parser.add_argument(
+        "--lock-delay-ms",
+        type=int,
+        default=20,
+        help="Base delay in ms between lock retries (default: 20)",
+    )
+    parser.add_argument(
+        "--lock-jitter-ms",
+        type=int,
+        default=40,
+        help="Extra random jitter in ms added to lock retry delay (default: 40)",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p = sub.add_parser("next-task-id", help="Print next task ID")
@@ -351,8 +410,14 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
+    if args.lock_retries < 0 or args.lock_delay_ms < 0 or args.lock_jitter_ms < 0:
+        parser.exit(status=1, message="error: lock retry settings must be non-negative\n")
     try:
-        args.func(args)
+        if _is_mutation(args.command):
+            with _acquire_lock(args.lock_retries, args.lock_delay_ms, args.lock_jitter_ms):
+                args.func(args)
+        else:
+            args.func(args)
     except TaskToolError as exc:
         parser.exit(status=1, message=f"error: {exc}\n")
     return 0
