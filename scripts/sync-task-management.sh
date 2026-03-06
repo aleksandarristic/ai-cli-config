@@ -27,27 +27,40 @@ print_webhook_reminder() {
   echo "Reminder: set a real webhook URL in $destination/.task-management/.webhook.json (webhook_url)."
 }
 
-ensure_webhook_gitignore() {
+ensure_task_management_gitignore() {
   local destination="$1"
   local gitignore_file="$destination/.gitignore"
-  local webhook_path=".task-management/.webhook.json"
+  local -a paths=(
+    ".task-management/.webhook.json"
+    ".task-management/.ops.json"
+    ".task-management/.tm.lock"
+    ".task-management/__pycache__/"
+  )
 
   if [[ ! -e "$gitignore_file" ]]; then
-    printf "%s\n" "$webhook_path" > "$gitignore_file"
-    echo "Updated $gitignore_file: added $webhook_path"
+    printf "%s\n" "${paths[@]}" > "$gitignore_file"
+    echo "Updated $gitignore_file: added task-management runtime ignore paths"
     return 0
   fi
 
-  if grep -qxF "$webhook_path" "$gitignore_file"; then
-    return 0
-  fi
+  local added=0
+  local path
+  for path in "${paths[@]}"; do
+    if grep -qxF "$path" "$gitignore_file"; then
+      continue
+    fi
 
-  if [[ -s "$gitignore_file" ]]; then
-    printf "\n%s\n" "$webhook_path" >> "$gitignore_file"
-  else
-    printf "%s\n" "$webhook_path" >> "$gitignore_file"
+    if [[ -s "$gitignore_file" ]]; then
+      printf "\n%s\n" "$path" >> "$gitignore_file"
+    else
+      printf "%s\n" "$path" >> "$gitignore_file"
+    fi
+    added=1
+  done
+
+  if [[ "$added" -eq 1 ]]; then
+    echo "Updated $gitignore_file: added task-management runtime ignore paths"
   fi
-  echo "Updated $gitignore_file: added $webhook_path"
 }
 
 ensure_agents_task_management_reference() {
@@ -272,13 +285,13 @@ validate_source_assets "$source_root"
 if [[ "$mode" == "copy" ]]; then
   copy_task_management "$source_root" "$dest" "$force"
   ensure_agents_task_management_reference "$dest"
-  ensure_webhook_gitignore "$dest"
+  ensure_task_management_gitignore "$dest"
   echo "Copied task management files to $dest"
   print_webhook_reminder "$dest"
 else
   upgrade_task_management "$source_root" "$dest"
   ensure_agents_task_management_reference "$dest"
-  ensure_webhook_gitignore "$dest"
+  ensure_task_management_gitignore "$dest"
   echo "Upgraded task management files in $dest (preserved task state)"
   print_webhook_reminder "$dest"
 fi

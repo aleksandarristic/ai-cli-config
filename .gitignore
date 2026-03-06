@@ -1,1 +1,3 @@
-
+.task-management/.ops.json
+.task-management/.tm.lock
+.task-management/__pycache__/

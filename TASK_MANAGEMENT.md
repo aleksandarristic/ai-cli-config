@@ -27,11 +27,12 @@ Use only when needed:
 - `notify.py`, `.notify_config.json`, `.notify_state.json`, `.webhook.json`: agent-driven Discord notifications.
 - `TASK_TEMPLATE.md`, `BUG_TEMPLATE.md`: copy/paste helpers.
 - `task_counter.md`, `bug_counter.md`: legacy compatibility only.
+- `.ops.json`, `.tm.lock`: runtime files created by `task_tool.py` for idempotency/locking (do not commit).
 
 Security:
 
 - `.task-management/.webhook.json` contains secret data.
-- Add `.task-management/.webhook.json` to `.gitignore`.
+- Add `.task-management/.webhook.json`, `.task-management/.ops.json`, `.task-management/.tm.lock`, and `.task-management/__pycache__/` to `.gitignore`.
 
 ## ID Rules
 
@@ -100,10 +101,14 @@ Use `.task-management/task_tool.py` for common operations:
 
 - `python3 .task-management/task_tool.py next-task-id`
 - `python3 .task-management/task_tool.py add-task --title "Short title"`
+- `python3 .task-management/task_tool.py list --file todo`
+- `python3 .task-management/task_tool.py status-task --id 0042`
 - `python3 .task-management/task_tool.py done-task --id 0042 --note "Shipped"`
 - `python3 .task-management/task_tool.py remove-task --id 0043 --reason "No longer needed"`
 - `python3 .task-management/task_tool.py add-bug --title "Short bug title"`
 - `python3 .task-management/task_tool.py close-bug --id BUG-0012 --resolution "Fixed race in parser"`
+- `python3 .task-management/task_tool.py normalize`
+- `python3 .task-management/task_tool.py --json add-task --title "Short title" --op-id task-123`
 
 ## Locking and Foreign Edits Policy
 
@@ -115,3 +120,4 @@ Use `.task-management/task_tool.py` for common operations:
 - If target task/bug is already moved or missing, treat it as already handled, add a short log note, and stop that mutation.
 - If status/ownership is unclear after re-read, ask one clarification question before further mutation.
 - Never renumber IDs or perform destructive cleanup of entries created by other agents.
+- If a mutation command fails, do not patch task files manually; retry via `task_tool.py` (or escalate).
